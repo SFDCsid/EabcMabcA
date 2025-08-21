@@ -2,9 +2,8 @@ name: EabcMabcA
 
 on:
   schedule:
-    # Runs every 5 min UTC (all day)
-    - cron: '*/5 * * * *'
-  workflow_dispatch:  # allows manual run
+    - cron: '*/5 * * * *'  # every 5 min UTC
+  workflow_dispatch:
 
 jobs:
   run-algo:
@@ -16,6 +15,15 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
+
+      # ===== Cache Python dependencies =====
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
