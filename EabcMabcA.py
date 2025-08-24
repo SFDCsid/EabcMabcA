@@ -7,7 +7,6 @@ from fyers_apiv3 import fyersModel
 access_token = os.environ.get("FYERS_TOKEN")
 if not access_token:
     raise ValueError("❌ FYERS_TOKEN not set in secrets!")
-
 client_id = access_token.split(":")[0]
 fyers = fyersModel.FyersModel(client_id=client_id, token=access_token, is_async=False)
 print("🔑 Fyers token loaded")
@@ -17,7 +16,6 @@ print("🔑 Fyers token loaded")
 # ============================
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID   = os.environ.get("TG_CHAT_ID")
-
 if not BOT_TOKEN or not CHAT_ID:
     raise ValueError("❌ Telegram credentials not set in secrets!")
 
@@ -32,12 +30,18 @@ def send_telegram_message(text):
         print("⚠️ Telegram Error:", e)
 
 # ============================ 
-# Config
+# Load configs from CSV (kept in repo)
 # ============================
-symbols     = ["MCX:CRUDEOILM25SEPFUT"]
-timeframes  = ["5"]
-ema_periods = [999]
-count       = 2000
+CONFIG_FILE = "configs.csv"   # place in same repo folder
+
+if not os.path.exists(CONFIG_FILE):
+    raise FileNotFoundError(f"❌ Config file not found: {CONFIG_FILE}")
+
+configs_df = pd.read_csv(CONFIG_FILE)
+configs = list(configs_df.itertuples(index=False, name=None))
+
+print("✅ Loaded strategy configs from CSV:")
+print(configs_df)
 
 # Optional test message
 send_telegram_message("🧪 Test: Telegram alerts are configured and working!")
@@ -50,7 +54,7 @@ def fetch_candles(symbol, resolution, count=2000):
     start_time = end_time - (count * int(resolution) * 60)
     data = {
         "symbol": symbol,
-        "resolution": resolution,
+        "resolution": str(resolution),
         "date_format": "0",
         "range_from": start_time,
         "range_to": end_time,
@@ -77,14 +81,11 @@ def detect_and_alert_crossovers(df, periods, symbol, tf):
     if df is None or len(df) < 2:
         print("⚠️ Not enough data to check crossovers")
         return
-
     last = df.iloc[-1]
     prev = df.iloc[-2]
-
     for p in periods:
         crossed_up   = prev["Close"] < prev[f"EMA_{p}"] and last["Close"] > last[f"EMA_{p}"]
         crossed_down = prev["Close"] > prev[f"EMA_{p}"] and last["Close"] < last[f"EMA_{p}"]
-
         if crossed_up:
             msg = f"📈 {symbol} | {tf}m\n🕒 {last['Timestamp']}\nCross ABOVE EMA{p}\nClose: {last['Close']:.2f} | EMA: {last[f'EMA_{p}']:.2f}"
             print(msg)
@@ -97,13 +98,12 @@ def detect_and_alert_crossovers(df, periods, symbol, tf):
             print(f"No crossover | {symbol} {tf}m | {last['Timestamp']} | Close={last['Close']:.2f} | EMA{p}={last[f'EMA_{p}']:.2f}")
 
 # ============================ 
-# Main
+# Main Loop (runs for each config)
 # ============================
-for symbol in symbols:
-    for tf in timeframes:
-        print(f"\n📊 {symbol} | {tf} min timeframe")
-        df = fetch_candles(symbol, tf, count)
-        if df is not None:
-            df = add_ema(df, ema_periods)
-            print(df.tail(3)[["Timestamp","Close",*(f"EMA_{p}" for p in ema_periods)]])
-            detect_and_alert_crossovers(df, ema_periods, symbol, tf)
+for symbol, tf, ema_p, count in configs:
+    print(f"\n📊 {symbol} | {tf} min timeframe | EMA{ema_p} | count={count}")
+    df = fetch_candles(symbol, str(tf), int(count))
+    if df is not None:
+        df = add_ema(df, [int(ema_p)])
+        print(df.tail(3)[["Timestamp","Close", f"EMA_{ema_p}"]])
+        detect_and_alert_crossovers(df, [int(ema_p)], symbol, str(tf))
