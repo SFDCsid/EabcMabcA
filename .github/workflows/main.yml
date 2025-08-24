@@ -28,32 +28,35 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run algo script and update combined log
+      - name: Run algo script and manage logs
         env:
           FYERS_TOKEN: ${{ secrets.FYERS_TOKEN }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
           mkdir -p logs
-          COMBINED_LOG="logs/combined.log"
 
-          echo "===== Run started at $(date) =====" >> "$COMBINED_LOG"
+          CURRENT_LOG="logs/current_run.log"
+          FULL_HISTORY_LOG="logs/full_history.log"
 
-          # Run the Python script: full stdout + logger output captured
-          python EabcMabcA.py 2>&1 | tee -a "$COMBINED_LOG"
+          echo "===== RUN STARTED: $(date) =====" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          echo "===== Run finished at $(date) =====" >> "$COMBINED_LOG"
+          # Run script and capture all output
+          python EabcMabcA.py 2>&1 | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          # Keep only the latest 1000 lines
-          tail -n 1000 "$COMBINED_LOG" > "$COMBINED_LOG.tmp" && mv "$COMBINED_LOG.tmp" "$COMBINED_LOG"
+          echo "===== RUN FINISHED: $(date) =====" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          # Display combined log in GitHub Actions UI
-          echo "===== Combined Log (last 1000 lines) ====="
-          cat "$COMBINED_LOG"
+          # Keep only last 1000 runs in full_history.log
+          awk 'BEGIN{RS="===== RUN STARTED:"; ORS=""} NR>1{runs[NR]=$0} END{start=NR-1000>1?NR-1000:1; for(i=start;i<=NR;i++) print "===== RUN STARTED:" runs[i]}' "$FULL_HISTORY_LOG" > "$FULL_HISTORY_LOG.tmp" && mv "$FULL_HISTORY_LOG.tmp" "$FULL_HISTORY_LOG"
 
-      - name: Upload combined log as artifact
+          # Highlight ERROR/WARNING in current run for Actions UI
+          echo "===== CURRENT RUN LOG (highlighted) ====="
+          sed -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
+              -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" "$CURRENT_LOG"
+
+      - name: Upload full history log as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: combined-log
-          path: logs/combined.log
+          name: full-history-log
+          path: logs/full_history.log
           retention-days: 7
