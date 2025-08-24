@@ -7,7 +7,8 @@ jobs:
   run-algo:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -27,18 +28,32 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run algo script (capture logs)
+      - name: Run algo script and update combined log
         env:
           FYERS_TOKEN: ${{ secrets.FYERS_TOKEN }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
         run: |
           mkdir -p logs
-          python EabcMabcA.py 2>&1 | tee logs/run-$(date +'%Y-%m-%d_%H-%M-%S').txt
+          COMBINED_LOG="logs/combined.log"
 
-      - name: Upload logs as artifact
+          echo "===== Run started at $(date) =====" >> "$COMBINED_LOG"
+
+          # Run the Python script: full stdout + logger output captured
+          python EabcMabcA.py 2>&1 | tee -a "$COMBINED_LOG"
+
+          echo "===== Run finished at $(date) =====" >> "$COMBINED_LOG"
+
+          # Keep only the latest 1000 lines
+          tail -n 1000 "$COMBINED_LOG" > "$COMBINED_LOG.tmp" && mv "$COMBINED_LOG.tmp" "$COMBINED_LOG"
+
+          # Display combined log in GitHub Actions UI
+          echo "===== Combined Log (last 1000 lines) ====="
+          cat "$COMBINED_LOG"
+
+      - name: Upload combined log as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: run-logs
-          path: logs/
+          name: combined-log
+          path: logs/combined.log
           retention-days: 7
