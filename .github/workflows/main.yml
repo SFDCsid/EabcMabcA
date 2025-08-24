@@ -41,7 +41,7 @@ jobs:
 
           echo "===== RUN STARTED: $(date) =====" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          # Run script and capture all output
+          # Run Python script and capture all output
           python EabcMabcA.py 2>&1 | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
           echo "===== RUN FINISHED: $(date) =====" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
@@ -49,8 +49,14 @@ jobs:
           # Keep only last 1000 runs in full_history.log
           awk 'BEGIN{RS="===== RUN STARTED:"; ORS=""} NR>1{runs[NR]=$0} END{start=NR-1000>1?NR-1000:1; for(i=start;i<=NR;i++) print "===== RUN STARTED:" runs[i]}' "$FULL_HISTORY_LOG" > "$FULL_HISTORY_LOG.tmp" && mv "$FULL_HISTORY_LOG.tmp" "$FULL_HISTORY_LOG"
 
-          # Highlight ERROR/WARNING in current run for Actions UI
-          echo "===== CURRENT RUN LOG (highlighted) ====="
+          # Display only errors/warnings at the top for quick view
+          echo "===== ERRORS / WARNINGS (highlighted) ====="
+          grep -E "\[ERROR\]|\[WARNING\]" "$CURRENT_LOG" | sed \
+              -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
+              -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g"
+
+          # Display full current run log below
+          echo "===== FULL CURRENT RUN LOG ====="
           sed -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
               -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" "$CURRENT_LOG"
 
