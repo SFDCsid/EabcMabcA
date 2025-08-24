@@ -40,7 +40,7 @@ jobs:
           FULL_HISTORY_LOG="logs/full_history.log"
 
           # IST time with 12h am/pm and 24h
-          IST_TIME=$(date -u +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h" --date='TZ="Asia/Kolkata" now')
+          IST_TIME=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h")
 
           # Highlighted run start
           echo -e "\033[1;34m===== RUN STARTED: $IST_TIME =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
@@ -49,7 +49,7 @@ jobs:
           python EabcMabcA.py 2>&1 | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
           # Highlighted run finish
-          IST_TIME_END=$(date -u +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h" --date='TZ="Asia/Kolkata" now')
+          IST_TIME_END=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h")
           echo -e "\033[1;34m===== RUN FINISHED: $IST_TIME_END =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
           # Keep only last 1000 runs in full_history.log
@@ -63,8 +63,12 @@ jobs:
 
           # Highlighted full current run log
           echo -e "\033[1;34m===== FULL CURRENT RUN LOG =====\033[0m"
+          # Highlight table/config snippet in yellow (your configs CSV output)
           sed -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
-              -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" "$CURRENT_LOG"
+              -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" \
+              -e "/MCX:CRUDEOILM25SEPFUT/ s/.*/\x1b[43;30m&\x1b[0m/" \
+              -e "/NSE:NIFTY25SEPFUT/ s/.*/\x1b[43;30m&\x1b[0m/" \
+              -e "/NSE:BANKNIFTY25SEPFUT/ s/.*/\x1b[43;30m&\x1b[0m/" "$CURRENT_LOG"
 
       - name: Upload full history log as artifact
         uses: actions/upload-artifact@v4
