@@ -32,7 +32,7 @@ def send_telegram_message(text):
 # ============================ 
 # Load configs from CSV (kept in repo)
 # ============================
-CONFIG_FILE = "configs.csv"   # place in same repo folder
+CONFIG_FILE = "configs/configs.csv"   # place in same repo folder
 
 if not os.path.exists(CONFIG_FILE):
     raise FileNotFoundError(f"❌ Config file not found: {CONFIG_FILE}")
