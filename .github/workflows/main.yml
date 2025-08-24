@@ -63,12 +63,7 @@ jobs:
 
           # Highlighted full current run log
           echo -e "\033[1;34m===== FULL CURRENT RUN LOG =====\033[0m"
-          # Highlight table/config snippet in yellow (your configs CSV output)
-          sed -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
-              -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" \
-              -e "/MCX:CRUDEOILM25SEPFUT/ s/.*/\x1b[43;30m&\x1b[0m/" \
-              -e "/NSE:NIFTY25SEPFUT/ s/.*/\x1b[43;30m&\x1b[0m/" \
-              -e "/NSE:BANKNIFTY25SEPFUT/ s/.*/\x1b[43;30m&\x1b[0m/" "$CURRENT_LOG"
+         
 
       - name: Upload full history log as artifact
         uses: actions/upload-artifact@v4
