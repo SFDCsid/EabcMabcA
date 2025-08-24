@@ -24,15 +24,41 @@ logging.basicConfig(
     ]
 )
 
-# convenience aliases to keep your existing log() calls working
-log   = logging.info
-warn  = logging.warning
-error = logging.error
+log = logging.info  # simple info messages
+
+# ============================
+# Telegram sending helper (safe)
+# ============================
+def safe_send_telegram(text: str):
+    try:
+        bot = os.environ.get("TG_BOT_TOKEN")
+        chat = os.environ.get("TG_CHAT_ID")
+        if not bot or not chat:
+            print(f"⚠️ Telegram not configured: {text}")
+            return
+        url = f"https://api.telegram.org/bot{bot}/sendMessage"
+        payload = {"chat_id": chat, "text": text}
+        r = requests.post(url, data=payload, timeout=10)
+        if r.status_code != 200:
+            print(f"⚠️ Telegram send failed: {r.text}")
+    except Exception as e:
+        print(f"⚠️ Telegram exception: {e}")
+
+# ============================
+# Override warn() and error()
+# ============================
+def warn(msg):
+    logging.warning(msg)
+    safe_send_telegram(f"⚠️ WARNING:\n{msg}")
+
+def error(msg):
+    logging.error(msg)
+    safe_send_telegram(f"❌ ERROR:\n{msg}")
 
 log(f"📝 Logging to {LOG_FILE}")
 
 # ============================ 
-# Load Fyers token from environment
+# Load Fyers token
 # ============================ 
 access_token = os.environ.get("FYERS_TOKEN")
 if not access_token:
@@ -40,12 +66,11 @@ if not access_token:
     raise ValueError("❌ FYERS_TOKEN not set in secrets!")
 
 client_id = access_token.split(":")[0]
-# keep your original init (is_async=False)
 fyers = fyersModel.FyersModel(client_id=client_id, token=access_token, is_async=False)
 log("🔑 Fyers token loaded")
 
 # ============================ 
-# Load Telegram creds from environment
+# Load Telegram credentials
 # ============================ 
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID   = os.environ.get("TG_CHAT_ID")
@@ -53,21 +78,10 @@ if not BOT_TOKEN or not CHAT_ID:
     error("❌ Telegram credentials not set in secrets!")
     raise ValueError("❌ Telegram credentials not set in secrets!")
 
-def send_telegram_message(text: str):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": text}
-    try:
-        r = requests.post(url, data=payload, timeout=10)
-        if r.status_code != 200:
-            warn(f"⚠️ Telegram send failed: {r.text}")
-    except Exception as e:
-        warn(f"⚠️ Telegram Error: {e}")
-
 # ============================ 
-# Load configs from CSV (kept in repo)
+# Load configs from CSV
 # ============================ 
-CONFIG_FILE = "configs/configs.csv"   # keep same path you used
-
+CONFIG_FILE = "configs/configs.csv"
 if not os.path.exists(CONFIG_FILE):
     error(f"❌ Config file not found: {CONFIG_FILE}")
     raise FileNotFoundError(f"❌ Config file not found: {CONFIG_FILE}")
@@ -78,8 +92,12 @@ configs = list(configs_df.itertuples(index=False, name=None))
 log("✅ Loaded strategy configs from CSV:")
 log(str(configs_df))
 
-# Optional test message
-send_telegram_message("🧪 Test: Telegram alerts are configured and working!")
+# ============================ 
+# Test Telegram
+# ============================ 
+send_msg_test = "🧪 Test: Telegram alerts are configured and working!"
+log(send_msg_test)
+safe_send_telegram(send_msg_test)
 
 # ============================ 
 # Data functions
@@ -129,7 +147,7 @@ def detect_and_alert_crossovers(df, periods, symbol, tf):
                 f"Close: {last['Close']:.2f} | EMA: {last[f'EMA_{p}']:.2f}"
             )
             log(msg)
-            send_telegram_message(msg)
+            safe_send_telegram(msg)
         elif crossed_down:
             msg = (
                 f"📉 {symbol} | {tf}m\n"
@@ -138,7 +156,7 @@ def detect_and_alert_crossovers(df, periods, symbol, tf):
                 f"Close: {last['Close']:.2f} | EMA: {last[f'EMA_{p}']:.2f}"
             )
             log(msg)
-            send_telegram_message(msg)
+            safe_send_telegram(msg)
         else:
             log(
                 f"No crossover | {symbol} {tf}m | {last['Timestamp']} | "
@@ -146,7 +164,7 @@ def detect_and_alert_crossovers(df, periods, symbol, tf):
             )
 
 # ============================ 
-# Main Loop (runs for each config)
+# Main Loop
 # ============================ 
 try:
     for symbol, tf, ema_p, count in configs:
@@ -158,6 +176,5 @@ try:
             detect_and_alert_crossovers(df, [int(ema_p)], symbol, str(tf))
     log("✅ Run completed successfully")
 except Exception as e:
-    # ensure any unexpected crash is logged before failing the job
     error(f"💥 Unhandled exception: {e}")
     raise
