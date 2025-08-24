@@ -8,9 +8,9 @@ import datetime
 import logging
 from fyers_apiv3 import fyersModel
 
-# ============================
+# ============================ 
 # Setup Logging (console + file)
-# ============================
+# ============================ 
 os.makedirs("logs", exist_ok=True)
 _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 LOG_FILE = f"logs/run-{_timestamp}.txt"
@@ -31,13 +31,12 @@ error = logging.error
 
 log(f"📝 Logging to {LOG_FILE}")
 
-# ============================
+# ============================ 
 # Load Fyers token from environment
-# ============================
+# ============================ 
 access_token = os.environ.get("FYERS_TOKEN")
 if not access_token:
     error("❌ FYERS_TOKEN not set in secrets!")
-    send_telegram_message("❌ [CRITICAL] FYERS_TOKEN not set!") # Telegram alert for missing token
     raise ValueError("❌ FYERS_TOKEN not set in secrets!")
 
 client_id = access_token.split(":")[0]
@@ -45,9 +44,9 @@ client_id = access_token.split(":")[0]
 fyers = fyersModel.FyersModel(client_id=client_id, token=access_token, is_async=False)
 log("🔑 Fyers token loaded")
 
-# ============================
+# ============================ 
 # Load Telegram creds from environment
-# ============================
+# ============================ 
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID   = os.environ.get("TG_CHAT_ID")
 if not BOT_TOKEN or not CHAT_ID:
@@ -55,7 +54,6 @@ if not BOT_TOKEN or not CHAT_ID:
     raise ValueError("❌ Telegram credentials not set in secrets!")
 
 def send_telegram_message(text: str):
-    """Sends a message to the configured Telegram chat."""
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {"chat_id": CHAT_ID, "text": text}
     try:
@@ -65,14 +63,13 @@ def send_telegram_message(text: str):
     except Exception as e:
         warn(f"⚠️ Telegram Error: {e}")
 
-# ============================
+# ============================ 
 # Load configs from CSV (kept in repo)
-# ============================
+# ============================ 
 CONFIG_FILE = "configs/configs.csv"   # keep same path you used
 
 if not os.path.exists(CONFIG_FILE):
     error(f"❌ Config file not found: {CONFIG_FILE}")
-    send_telegram_message(f"❌ [CRITICAL] Config file not found: {CONFIG_FILE}") # Telegram alert for missing config file
     raise FileNotFoundError(f"❌ Config file not found: {CONFIG_FILE}")
 
 configs_df = pd.read_csv(CONFIG_FILE)
@@ -84,11 +81,10 @@ log(str(configs_df))
 # Optional test message
 send_telegram_message("🧪 Test: Telegram alerts are configured and working!")
 
-# ============================
+# ============================ 
 # Data functions
-# ============================
+# ============================ 
 def fetch_candles(symbol, resolution, count=2000):
-    """Fetches historical candle data from Fyers API."""
     end_time = int(time.time())
     start_time = end_time - (count * int(resolution) * 60)
     data = {
@@ -102,7 +98,6 @@ def fetch_candles(symbol, resolution, count=2000):
     resp = fyers.history(data=data)
     if resp.get("s") != "ok":
         error(f"❌ Error fetching {symbol} {resolution}m: {resp}")
-        send_telegram_message(f"❌ [Error] Failed to fetch data for {symbol}.") # Telegram alert for failed data fetch
         return None
     df = pd.DataFrame(resp["candles"], columns=["Timestamp","Open","High","Low","Close","Volume"])
     df["Timestamp"] = (
@@ -113,25 +108,22 @@ def fetch_candles(symbol, resolution, count=2000):
     return df.sort_values("Timestamp").reset_index(drop=True)
 
 def add_ema(df, periods):
-    """Calculates EMA and adds to the DataFrame."""
     for p in periods:
         df[f"EMA_{p}"] = df["Close"].ewm(span=p, adjust=False).mean()
     return df
 
 def detect_and_alert_crossovers(df, periods, symbol, tf):
-    """Checks for EMA crossovers and sends alerts."""
     if df is None or len(df) < 2:
         warn("⚠️ Not enough data to check crossovers")
-        send_telegram_message(f"⚠️ [Warning] Not enough data for {symbol} to check crossovers.") # Telegram alert for insufficient data
         return
     last = df.iloc[-1]
     prev = df.iloc[-2]
     for p in periods:
-        crossed_up  = prev["Close"] < prev[f"EMA_{p}"] and last["Close"] > last[f"EMA_{p}"]
+        crossed_up   = prev["Close"] < prev[f"EMA_{p}"] and last["Close"] > last[f"EMA_{p}"]
         crossed_down = prev["Close"] > prev[f"EMA_{p}"] and last["Close"] < last[f"EMA_{p}"]
         if crossed_up:
             msg = (
-                f"� {symbol} | {tf}m\n"
+                f"📈 {symbol} | {tf}m\n"
                 f"🕒 {last['Timestamp']}\n"
                 f"Cross ABOVE EMA{p}\n"
                 f"Close: {last['Close']:.2f} | EMA: {last[f'EMA_{p}']:.2f}"
@@ -153,13 +145,11 @@ def detect_and_alert_crossovers(df, periods, symbol, tf):
                 f"Close={last['Close']:.2f} | EMA{p}={last[f'EMA_{p}']:.2f}"
             )
 
-# ============================
+# ============================ 
 # Main Loop (runs for each config)
-# ============================
+# ============================ 
 try:
     for symbol, tf, ema_p, count in configs:
-        # Telegram alert for the start of each symbol check
-        send_telegram_message(f"📊 Running check for {symbol} | {tf}min timeframe...")
         log(f"\n📊 {symbol} | {tf} min timeframe | EMA{ema_p} | count={count}")
         df = fetch_candles(symbol, str(tf), int(count))
         if df is not None:
@@ -167,9 +157,7 @@ try:
             log(str(df.tail(3)[["Timestamp","Close", f"EMA_{ema_p}"]]))
             detect_and_alert_crossovers(df, [int(ema_p)], symbol, str(tf))
     log("✅ Run completed successfully")
-    send_telegram_message("✅ Run completed successfully.") # Telegram alert for successful run completion
 except Exception as e:
-    # ensure any unexpected crash is logged and a Telegram alert is sent
+    # ensure any unexpected crash is logged before failing the job
     error(f"💥 Unhandled exception: {e}")
-    send_telegram_message(f"💥 [CRITICAL] Unhandled exception occurred: {e}")
     raise
