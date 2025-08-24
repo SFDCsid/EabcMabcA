@@ -39,24 +39,30 @@ jobs:
           CURRENT_LOG="logs/current_run.log"
           FULL_HISTORY_LOG="logs/full_history.log"
 
-          echo "===== RUN STARTED: $(date) =====" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
+          # IST time with 12h am/pm and 24h
+          IST_TIME=$(date -u +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h" --date='TZ="Asia/Kolkata" now')
 
-          # Run Python script and capture all output
+          # Highlighted run start
+          echo -e "\033[1;34m===== RUN STARTED: $IST_TIME =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
+
+          # Run Python script capturing stdout + stderr
           python EabcMabcA.py 2>&1 | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          echo "===== RUN FINISHED: $(date) =====" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
+          # Highlighted run finish
+          IST_TIME_END=$(date -u +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h" --date='TZ="Asia/Kolkata" now')
+          echo -e "\033[1;34m===== RUN FINISHED: $IST_TIME_END =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
           # Keep only last 1000 runs in full_history.log
           awk 'BEGIN{RS="===== RUN STARTED:"; ORS=""} NR>1{runs[NR]=$0} END{start=NR-1000>1?NR-1000:1; for(i=start;i<=NR;i++) print "===== RUN STARTED:" runs[i]}' "$FULL_HISTORY_LOG" > "$FULL_HISTORY_LOG.tmp" && mv "$FULL_HISTORY_LOG.tmp" "$FULL_HISTORY_LOG"
 
-          # Display only errors/warnings at the top for quick view
-          echo "===== ERRORS / WARNINGS (highlighted) ====="
+          # Highlighted errors/warnings for quick view
+          echo -e "\033[1;34m===== ERRORS / WARNINGS (highlighted) =====\033[0m"
           grep -E "\[ERROR\]|\[WARNING\]" "$CURRENT_LOG" | sed \
               -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
               -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g"
 
-          # Display full current run log below
-          echo "===== FULL CURRENT RUN LOG ====="
+          # Highlighted full current run log
+          echo -e "\033[1;34m===== FULL CURRENT RUN LOG =====\033[0m"
           sed -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
               -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" "$CURRENT_LOG"
 
