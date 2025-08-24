@@ -173,4 +173,3 @@ except Exception as e:
     error(f"💥 Unhandled exception: {e}")
     send_telegram_message(f"💥 [CRITICAL] Unhandled exception occurred: {e}")
     raise
-�
