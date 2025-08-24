@@ -41,17 +41,7 @@ jobs:
           pip install -r requirements.txt
 
       # -----------------------------
-      # 5. Download previous full_history.log artifact
-      # -----------------------------
-      - name: Download previous full history log
-        uses: actions/download-artifact@v4
-        with:
-          name: full-history-log
-          path: logs
-        continue-on-error: true  # In case first run and artifact does not exist
-
-      # -----------------------------
-      # 6. Run algo script and manage logs
+      # 5. Run algo script and manage logs
       # -----------------------------
       - name: Run algo script and manage logs
         env:
@@ -62,25 +52,19 @@ jobs:
           mkdir -p logs
 
           CURRENT_LOG="logs/current_run.log"
-          FULL_HISTORY_LOG="logs/full_history.log"
 
           # IST timestamp
           IST_TIME=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h")
 
           # Log start
-          echo -e "\033[1;34m===== RUN STARTED: $IST_TIME =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
+          echo -e "\033[1;34m===== RUN STARTED: $IST_TIME =====\033[0m" | tee -a "$CURRENT_LOG"
 
           # Run Python script
-          python EabcMabcA.py 2>&1 | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
+          python EabcMabcA.py 2>&1 | tee -a "$CURRENT_LOG"
 
           # Log finish
           IST_TIME_END=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h")
-          echo -e "\033[1;34m===== RUN FINISHED: $IST_TIME_END =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
-
-          # Keep only last 1000 runs
-          if [ -f "$FULL_HISTORY_LOG" ]; then
-            awk 'BEGIN{RS="===== RUN STARTED:"; ORS=""} NR>1{runs[NR]=$0} END{start=NR-1000>1?NR-1000:1; for(i=start;i<=NR;i++) print "===== RUN STARTED:" runs[i]}' "$FULL_HISTORY_LOG" > "$FULL_HISTORY_LOG.tmp" && mv "$FULL_HISTORY_LOG.tmp" "$FULL_HISTORY_LOG"
-          fi
+          echo -e "\033[1;34m===== RUN FINISHED: $IST_TIME_END =====\033[0m" | tee -a "$CURRENT_LOG"
 
           # Highlight errors/warnings
           echo -e "\033[1;34m===== ERRORS / WARNINGS (highlighted) =====\033[0m"
@@ -93,13 +77,3 @@ jobs:
           sed -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
               -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" \
               "$CURRENT_LOG"
-
-      # -----------------------------
-      # 7. Upload full_history.log artifact
-      # -----------------------------
-      - name: Upload full history log as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-history-log
-          path: logs/full_history.log
-          retention-days: 7
