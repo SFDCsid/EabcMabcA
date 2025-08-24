@@ -7,14 +7,23 @@ jobs:
   run-algo:
     runs-on: ubuntu-latest
     steps:
+      # -----------------------------
+      # 1. Checkout repo
+      # -----------------------------
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # -----------------------------
+      # 2. Set up Python
+      # -----------------------------
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
 
+      # -----------------------------
+      # 3. Cache pip
+      # -----------------------------
       - name: Cache pip
         uses: actions/cache@v3
         with:
@@ -23,11 +32,27 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      # -----------------------------
+      # 4. Install dependencies
+      # -----------------------------
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      # -----------------------------
+      # 5. Download previous full_history.log artifact
+      # -----------------------------
+      - name: Download previous full history log
+        uses: actions/download-artifact@v4
+        with:
+          name: full-history-log
+          path: logs
+        continue-on-error: true  # In case first run and artifact does not exist
+
+      # -----------------------------
+      # 6. Run algo script and manage logs
+      # -----------------------------
       - name: Run algo script and manage logs
         env:
           FYERS_TOKEN: ${{ secrets.FYERS_TOKEN }}
@@ -39,35 +64,39 @@ jobs:
           CURRENT_LOG="logs/current_run.log"
           FULL_HISTORY_LOG="logs/full_history.log"
 
-          # IST time with 12h am/pm and 24h
+          # IST timestamp
           IST_TIME=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h")
 
-          # Highlighted run start
+          # Log start
           echo -e "\033[1;34m===== RUN STARTED: $IST_TIME =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          # Run Python script capturing stdout + stderr
+          # Run Python script
           python EabcMabcA.py 2>&1 | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          # Highlighted run finish
+          # Log finish
           IST_TIME_END=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h")
           echo -e "\033[1;34m===== RUN FINISHED: $IST_TIME_END =====\033[0m" | tee -a "$CURRENT_LOG" "$FULL_HISTORY_LOG"
 
-          # Keep only last 1000 runs in full_history.log
-          awk 'BEGIN{RS="===== RUN STARTED:"; ORS=""} NR>1{runs[NR]=$0} END{start=NR-1000>1?NR-1000:1; for(i=start;i<=NR;i++) print "===== RUN STARTED:" runs[i]}' "$FULL_HISTORY_LOG" > "$FULL_HISTORY_LOG.tmp" && mv "$FULL_HISTORY_LOG.tmp" "$FULL_HISTORY_LOG"
+          # Keep only last 1000 runs
+          if [ -f "$FULL_HISTORY_LOG" ]; then
+            awk 'BEGIN{RS="===== RUN STARTED:"; ORS=""} NR>1{runs[NR]=$0} END{start=NR-1000>1?NR-1000:1; for(i=start;i<=NR;i++) print "===== RUN STARTED:" runs[i]}' "$FULL_HISTORY_LOG" > "$FULL_HISTORY_LOG.tmp" && mv "$FULL_HISTORY_LOG.tmp" "$FULL_HISTORY_LOG"
+          fi
 
-          # Highlighted errors/warnings for quick view
+          # Highlight errors/warnings
           echo -e "\033[1;34m===== ERRORS / WARNINGS (highlighted) =====\033[0m"
           grep -E "\[ERROR\]|\[WARNING\]" "$CURRENT_LOG" | sed \
               -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
               -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g"
 
-          # Highlighted full current run log
+          # Full current run log (without yellow background)
           echo -e "\033[1;34m===== FULL CURRENT RUN LOG =====\033[0m"
-          # Highlight table/config snippet in yellow (your configs CSV output)
           sed -e "s/\[ERROR\]/\x1b[31m[ERROR]\x1b[0m/g" \
               -e "s/\[WARNING\]/\x1b[33m[WARNING]\x1b[0m/g" \
               "$CURRENT_LOG"
 
+      # -----------------------------
+      # 7. Upload full_history.log artifact
+      # -----------------------------
       - name: Upload full history log as artifact
         uses: actions/upload-artifact@v4
         with:
