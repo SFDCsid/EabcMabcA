@@ -1,14 +1,9 @@
 name: EabcMabcA
 
 on:
-  # The `schedule` trigger is commented out. The workflow will not
-  # run automatically based on the cron schedule.
+  workflow_dispatch:
   # schedule:
   #   - cron: '*/5 * * * *'  # every 5 min UTC
-  
-  # This event allows the workflow to be triggered via an API call,
-  # which will be done by the Cloudflare Worker.
-  workflow_dispatch:
 
 jobs:
   run-algo:
@@ -40,4 +35,14 @@ jobs:
           FYERS_TOKEN: ${{ secrets.FYERS_TOKEN }}
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-        run: python EabcMabcA.py
+        run: |
+          mkdir -p logs
+          python EabcMabcA.py | tee logs/run-$(date +'%Y-%m-%d-%H-%M-%S').txt
+
+      # ===== Upload logs as artifact =====
+      - name: Upload logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: algo-logs
+          path: logs/
+          retention-days: 7   # keep logs for 7 days (you can change)
