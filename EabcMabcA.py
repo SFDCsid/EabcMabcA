@@ -7,6 +7,7 @@ import pandas as pd
 import datetime
 import logging
 from fyers_apiv3 import fyersModel
+from io import StringIO
 
 # ============================ 
 # Setup Logging (console + file)
@@ -81,15 +82,15 @@ if not BOT_TOKEN or not CHAT_ID:
 # ============================ 
 # Load configs from CSV
 # ============================ 
-CONFIG_FILE = "configs/configs.csv"
-if not os.path.exists(CONFIG_FILE):
-    error(f"❌ Config file not found: {CONFIG_FILE}")
-    raise FileNotFoundError(f"❌ Config file not found: {CONFIG_FILE}")
+configs_str = os.environ.get("TRADE_CONFIGS")
+if not configs_str:
+    error("❌ TRADE_CONFIGS variable not set in GitHub Actions!")
+    raise ValueError("❌ TRADE_CONFIGS variable not set in GitHub Actions!")
 
-configs_df = pd.read_csv(CONFIG_FILE)
+configs_df = pd.read_csv(StringIO(configs_str))
 configs = list(configs_df.itertuples(index=False, name=None))
 
-log("✅ Loaded strategy configs from CSV:")
+log("✅ Loaded strategy configs from GitHub Actions variable:")
 log(str(configs_df))
 
 # ============================ 
