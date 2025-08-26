@@ -96,9 +96,9 @@ log(str(configs_df))
 # ============================ 
 # Test Telegram (uncomment this for just telegram message testing)
 # ============================ 
-# send_msg_test = "🧪 Test: Telegram alerts are configured and working!"
-# log(send_msg_test)
-# safe_send_telegram(send_msg_test)
+send_msg_test = "🧪 Test: Telegram alerts are configured and working!"
+log(send_msg_test)
+safe_send_telegram(send_msg_test)
 
 # ============================ 
 # Data functions
