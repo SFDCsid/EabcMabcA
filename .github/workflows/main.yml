@@ -44,14 +44,14 @@ jobs:
       # 5. Run algo script and manage logs
       # -----------------------------
       - name: Run algo script and manage logs
-        env:
-          FYERS_TOKEN: ${{ secrets.FYERS_TOKEN }}
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
-        run: |
-          mkdir -p logs
-
-          CURRENT_LOG="logs/current_run.log"
+  env:
+    FYERS_TOKEN: ${{ secrets.FYERS_TOKEN }}
+    TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+    TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+    TRADE_CONFIGS: ${{ vars.TRADE_CONFIGS }}   # <-- NEW
+  run: |
+    mkdir -p logs
+    CURRENT_LOG="logs/current_run.log"
 
           # IST timestamp
           IST_TIME=$(TZ="Asia/Kolkata" date +"%Y-%m-%d %I:%M:%S %p IST / %H:%M:%S 24h")
