@@ -87,7 +87,12 @@ if not configs_str:
     error("❌ TRADE_CONFIGS variable not set in GitHub Actions!")
     raise ValueError("❌ TRADE_CONFIGS variable not set in GitHub Actions!")
 
-configs_df = pd.read_csv(StringIO(configs_str))
+try:
+    configs_df = pd.read_csv(StringIO(configs_str))
+except pd.errors.EmptyDataError:
+    error("❌ TRADE_CONFIGS provided but CSV is empty!")
+    raise ValueError("❌ TRADE_CONFIGS provided but CSV is empty!")
+
 configs = list(configs_df.itertuples(index=False, name=None))
 
 log("✅ Loaded strategy configs from GitHub Actions variable:")
