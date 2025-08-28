@@ -43,7 +43,7 @@ TELEGRAM_LIMIT = 4000  # Telegram max message length
 # ============================
 # Independent Test Telegram Message // uncomment to test only telegram message (but this logic can also be tested sending logs)
 # ============================
-# SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
+  SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
 # def send_test_telegram():
 #     if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
 #          msg = "🧪 Test: Telegram alerts are configured and working!"
