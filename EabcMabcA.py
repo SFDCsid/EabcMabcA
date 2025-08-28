@@ -36,7 +36,7 @@ BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID = os.environ.get("TG_CHAT_ID")
 
 if not BOT_TOKEN or not CHAT_ID:
-    log("⚠️ Telegram credentials not set. Telegram alerts will not work.")
+    log(⚠️ Telegram credentials not set. Telegram alerts will not work.")
 
 TELEGRAM_LIMIT = 4000  # Telegram max message length
 
