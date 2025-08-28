@@ -11,9 +11,9 @@ import logging
 from fyers_apiv3 import fyersModel
 from io import StringIO
 
-# ============================ 
+# ============================
 # Setup Logging
-# ============================ 
+# ============================
 os.makedirs("logs", exist_ok=True)
 _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 LOG_FILE = f"logs/run-{_timestamp}.txt"
@@ -41,15 +41,37 @@ if not BOT_TOKEN or not CHAT_ID:
 TELEGRAM_LIMIT = 4000  # Telegram max message length
 
 # ============================
+# Telegram Logging Handler (ADDED)
+# ============================
+class TelegramHandler(logging.Handler):
+    """A custom logging handler that sends messages to Telegram."""
+    def __init__(self, bot_token, chat_id):
+        super().__init__()
+        self.bot_token = bot_token
+        self.chat_id = chat_id
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        payload = {"chat_id": self.chat_id, "text": log_entry}
+        try:
+            requests.post(url, data=payload, timeout=5)
+        except Exception as e:
+            print(f"Failed to send log to Telegram: {e}")
+
+# Add the Telegram Handler to the logger if credentials and the toggle are set
+SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
+if BOT_TOKEN and CHAT_ID and SEND_TEST_TELEGRAM:
+    telegram_handler = TelegramHandler(BOT_TOKEN, CHAT_ID)
+    telegram_handler.setLevel(logging.INFO)  # Set the minimum log level to send
+    logging.getLogger().addHandler(telegram_handler)
+    log("✅ Telegram log handler added.")
+
+
+# ============================
 # Independent Test Telegram Message
 # ============================
-# SEND_TEST_TELEGRAM = True  # <-- direct toggle here
-SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
-print("--- DEBUGGING ENV VARIABLES ---")
-print(f"Value of SEND_TEST_TELEGRAM from environment: '{os.environ.get('SEND_TEST_TELEGRAM')}'")
-print(f"Is it equal to the string '1'? {os.environ.get('SEND_TEST_TELEGRAM') == '1'}")
-print("--- END DEBUGGING ---")
-
+# The debugging lines were removed as the issue is resolved.
 def send_test_telegram():
     """Send a standalone test message, independent of other alerts."""
     if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
@@ -126,7 +148,7 @@ if not configs_str:
     raise ValueError("❌ TRADE_CONFIGS variable not set in GitHub Actions!")
 
 try:
-    configs_df = pd.read_csv(StringIO(configs_str))
+   configs_df = pd.read_csv(StringIO(configs_str))
 except pd.errors.EmptyDataError:
     error("❌ TRADE_CONFIGS provided but CSV is empty!")
     raise ValueError("❌ TRADE_CONFIGS provided but CSV is empty!")
