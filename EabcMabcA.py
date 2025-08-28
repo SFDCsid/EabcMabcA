@@ -34,7 +34,7 @@ log(f"📝 Logging to {LOG_FILE}")
 # ============================
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID = os.environ.get("TG_CHAT_ID")
-SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM", "0") == "1"  # Use "1" to send test
+SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM", "false").lower() == "true"
 
 if not BOT_TOKEN or not CHAT_ID:
     log("⚠️ Telegram credentials not set. Telegram alerts will not work.")
