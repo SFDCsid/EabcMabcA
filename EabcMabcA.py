@@ -43,8 +43,8 @@ TELEGRAM_LIMIT = 4000  # Telegram max message length
 # ============================
 # Independent Test Telegram Message
 # ============================
-SEND_TEST_TELEGRAM = True  # <-- direct toggle here
-# SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM")
+# SEND_TEST_TELEGRAM = True  # <-- direct toggle here
+ SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM")
 
 def send_test_telegram():
     """Send a standalone test message, independent of other alerts."""
