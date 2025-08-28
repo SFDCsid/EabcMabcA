@@ -34,7 +34,6 @@ log(f"📝 Logging to {LOG_FILE}")
 # ============================
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 CHAT_ID = os.environ.get("TG_CHAT_ID")
-SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM", "false").lower() == "true"
 
 if not BOT_TOKEN or not CHAT_ID:
     log("⚠️ Telegram credentials not set. Telegram alerts will not work.")
@@ -44,6 +43,8 @@ TELEGRAM_LIMIT = 4000  # Telegram max message length
 # ============================
 # Independent Test Telegram Message
 # ============================
+SEND_TEST_TELEGRAM = True  # <-- direct toggle here
+
 def send_test_telegram():
     """Send a standalone test message, independent of other alerts."""
     if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
@@ -59,7 +60,7 @@ def send_test_telegram():
         except Exception as e:
             log(f"⚠️ Test Telegram exception: {e}")
 
-# Send test message at the very start
+# Send test message immediately
 send_test_telegram()
 
 # ============================
