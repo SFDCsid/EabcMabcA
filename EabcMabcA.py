@@ -41,24 +41,24 @@ if not BOT_TOKEN or not CHAT_ID:
 TELEGRAM_LIMIT = 4000  # Telegram max message length
 
 # ============================
-# Independent Test Telegram Message
+# Independent Test Telegram Message // uncomment to test only telegram message (but this logic can also be tested sending logs)
 # ============================
-SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
-def send_test_telegram():
-    if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
-        msg = "🧪 Test: Telegram alerts are configured and working!"
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        payload = {"chat_id": CHAT_ID, "text": msg}
-        try:
-            r = requests.post(url, data=payload, timeout=10)
-            if r.status_code == 200:
-                log("✅ Test Telegram message sent successfully.")
-            else:
-                log(f"⚠️ Test Telegram failed: {r.text}")
-        except Exception as e:
-            log(f"⚠️ Test Telegram exception: {e}")
+# SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
+# def send_test_telegram():
+#     if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
+#          msg = "🧪 Test: Telegram alerts are configured and working!"
+#         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+#         payload = {"chat_id": CHAT_ID, "text": msg}
+#         try:
+#             r = requests.post(url, data=payload, timeout=10)
+#             if r.status_code == 200:
+#                 log("✅ Test Telegram message sent successfully.")
+#             else:
+#                 log(f"⚠️ Test Telegram failed: {r.text}")
+#         except Exception as e:
+#             log(f"⚠️ Test Telegram exception: {e}")
 
-send_test_telegram()
+# send_test_telegram()
 
 # ============================
 # In-memory storage for logs and SMA alerts
