@@ -1,4 +1,3 @@
-NEW
 # ============================
 # SMA Crossover Alert with Gap Handling
 # ============================
