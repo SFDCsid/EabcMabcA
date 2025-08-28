@@ -1,5 +1,5 @@
 # ============================
-# SMA Crossover Alert with Gap Handling and Combined Telegram Alerts
+# SMA Crossover Alert with Gap Handling and Separate Test Telegram Message
 # ============================
 
 import os
@@ -42,13 +42,34 @@ if not BOT_TOKEN or not CHAT_ID:
 TELEGRAM_LIMIT = 4000  # Telegram max message length
 
 # ============================
+# Independent Test Telegram Message
+# ============================
+def send_test_telegram():
+    """Send a standalone test message, independent of other alerts."""
+    if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
+        msg = "🧪 Test: Telegram alerts are configured and working!"
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": CHAT_ID, "text": msg}
+        try:
+            r = requests.post(url, data=payload, timeout=10)
+            if r.status_code == 200:
+                log("✅ Test Telegram message sent successfully.")
+            else:
+                log(f"⚠️ Test Telegram failed: {r.text}")
+        except Exception as e:
+            log(f"⚠️ Test Telegram exception: {e}")
+
+# Send test message at the very start
+send_test_telegram()
+
+# ============================
 # In-memory storage for alerts
 # ============================
 all_alerts = []
 alert_cache = set()  # For duplicate prevention per run
 
 # ============================
-# Telegram helpers
+# Telegram helpers (for SMA alerts)
 # ============================
 def safe_send_telegram_bulk(messages):
     if not BOT_TOKEN or not CHAT_ID:
@@ -66,13 +87,6 @@ def safe_send_telegram_bulk(messages):
                 log(f"⚠️ Telegram send failed: {r.text}")
         except Exception as e:
             log(f"⚠️ Telegram exception: {e}")
-
-def maybe_send_test_telegram():
-    """Send test message if SEND_TEST_TELEGRAM is enabled"""
-    if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
-        msg = "🧪 Test: Telegram alerts are configured and working!"
-        safe_send_telegram_bulk([msg])
-        log("✅ Test Telegram message sent.")
 
 # ============================
 # Logging overrides to queue alerts
@@ -191,9 +205,6 @@ def detect_sma_cross(df, periods, symbol, tf):
 # Main Loop
 # ============================
 try:
-    # Optional test Telegram message
-    maybe_send_test_telegram()
-
     for symbol, tf, sma_p, count in configs:
         log(f"\n📊 {symbol} | {tf} min timeframe | SMA{sma_p} | count={count}")
         df = fetch_candles(symbol, str(tf), int(count))
@@ -203,6 +214,7 @@ try:
             log(str(df.tail(3)[["Timestamp","Close"] + [f"SMA_{p}" for p in periods]]))
             detect_sma_cross(df, periods, symbol, str(tf))
 
+    # Send all SMA alerts in bulk if any
     if all_alerts:
         safe_send_telegram_bulk(all_alerts)
     else:
