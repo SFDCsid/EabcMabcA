@@ -1,4 +1,7 @@
+# ============================
 # SMA Crossover Alert with Gap Handling and Combined Telegram Alerts
+# ============================
+
 import os
 import time
 import requests
@@ -9,7 +12,7 @@ from fyers_apiv3 import fyersModel
 from io import StringIO
 
 # ============================ 
-# Setup Logging (console + file)
+# Setup Logging
 # ============================ 
 os.makedirs("logs", exist_ok=True)
 _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -30,7 +33,9 @@ log(f"📝 Logging to {LOG_FILE}")
 # Load Telegram credentials
 # ============================
 BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
-CHAT_ID   = os.environ.get("TG_CHAT_ID")
+CHAT_ID = os.environ.get("TG_CHAT_ID")
+SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM", "0") == "1"  # Use "1" to send test
+
 if not BOT_TOKEN or not CHAT_ID:
     log("⚠️ Telegram credentials not set. Telegram alerts will not work.")
 
@@ -62,21 +67,12 @@ def safe_send_telegram_bulk(messages):
         except Exception as e:
             log(f"⚠️ Telegram exception: {e}")
 
-def test_telegram():
-    if BOT_TOKEN and CHAT_ID:
-        msg = "🧪 Test: Telegram alerts are configured and working!"
-        all_alerts.append(msg)
-        log("✅ Telegram test message queued.")
-
-# ============================
-# Telegram test message
-# ============================
-
-def test_telegram():
-    if BOT_TOKEN and CHAT_ID:
+def maybe_send_test_telegram():
+    """Send test message if SEND_TEST_TELEGRAM is enabled"""
+    if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
         msg = "🧪 Test: Telegram alerts are configured and working!"
         safe_send_telegram_bulk([msg])
-        log("✅ Telegram test message sent.")
+        log("✅ Test Telegram message sent.")
 
 # ============================
 # Logging overrides to queue alerts
@@ -195,8 +191,8 @@ def detect_sma_cross(df, periods, symbol, tf):
 # Main Loop
 # ============================
 try:
-    # Test message at start
-    test_telegram()
+    # Optional test Telegram message
+    maybe_send_test_telegram()
 
     for symbol, tf, sma_p, count in configs:
         log(f"\n📊 {symbol} | {tf} min timeframe | SMA{sma_p} | count={count}")
