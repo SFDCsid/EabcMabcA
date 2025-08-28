@@ -1,4 +1,3 @@
-latest
 # ============================
 # SMA Crossover Alert with Gap Handling and Separate Test Telegram Message
 # ============================
@@ -41,13 +40,15 @@ if not BOT_TOKEN or not CHAT_ID:
 
 TELEGRAM_LIMIT = 4000  # Telegram max message length
 
-# ============================ 
-# Test Telegram (uncomment to send only a test message)
-# ============================ 
-send_msg_test = "🧪 Test: Telegram alerts are configured and working!"
-log(send_msg_test)
-def safe_send_telegram(msg):
-    if BOT_TOKEN and CHAT_ID:
+# ============================
+# Independent Test Telegram Message
+# ============================
+SEND_TEST_TELEGRAM = True  # <-- direct toggle here
+
+def send_test_telegram():
+    """Send a standalone test message, independent of other alerts."""
+    if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
+        msg = "🧪 Test: Telegram alerts are configured and working!"
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
         payload = {"chat_id": CHAT_ID, "text": msg}
         try:
@@ -58,14 +59,9 @@ def safe_send_telegram(msg):
                 log(f"⚠️ Test Telegram failed: {r.text}")
         except Exception as e:
             log(f"⚠️ Test Telegram exception: {e}")
-safe_send_telegram(send_msg_test)
-# ============================ 
 
-# Test Telegram (uncomment this for just telegram message testing)
-# ============================ 
-# send_msg_test = "🧪 Test: Telegram alerts are configured and working!"
-# log(send_msg_test)
-# safe_send_telegram(send_msg_test)
+# Send test message immediately
+send_test_telegram()
 
 # ============================
 # In-memory storage for alerts
