@@ -1,3 +1,4 @@
+new code
 # ============================
 # SMA Crossover Alert with Gap Handling and Separate Test Telegram Message
 # ============================
@@ -41,10 +42,10 @@ if not BOT_TOKEN or not CHAT_ID:
 TELEGRAM_LIMIT = 4000  # Telegram max message length
 
 # ============================
-# Telegram Logging Handler (ADDED)
+# Telegram Log Handler (Reverted to real-time, controlled by toggle)
 # ============================
 class TelegramHandler(logging.Handler):
-    """A custom logging handler that sends messages to Telegram."""
+    """A custom logging handler that sends messages to Telegram in real-time."""
     def __init__(self, bot_token, chat_id):
         super().__init__()
         self.bot_token = bot_token
@@ -59,19 +60,17 @@ class TelegramHandler(logging.Handler):
         except Exception as e:
             print(f"Failed to send log to Telegram: {e}")
 
-# Add the Telegram Handler to the logger if credentials and the toggle are set
+# Separate control for real-time logging
 SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
 if BOT_TOKEN and CHAT_ID and SEND_TEST_TELEGRAM:
     telegram_handler = TelegramHandler(BOT_TOKEN, CHAT_ID)
-    telegram_handler.setLevel(logging.INFO)  # Set the minimum log level to send
+    telegram_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(telegram_handler)
-    log("✅ Telegram log handler added.")
-
+    log("✅ Real-time Telegram logs are enabled.")
 
 # ============================
 # Independent Test Telegram Message
 # ============================
-# The debugging lines were removed as the issue is resolved.
 def send_test_telegram():
     """Send a standalone test message, independent of other alerts."""
     if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
@@ -91,15 +90,16 @@ def send_test_telegram():
 send_test_telegram()
 
 # ============================
-# In-memory storage for alerts
+# In-memory storage for SMA alerts
 # ============================
-all_alerts = []
+all_alerts = []  # This list now only collects the final SMA alerts
 alert_cache = set()  # For duplicate prevention per run
 
 # ============================
 # Telegram helpers (for SMA alerts)
 # ============================
 def safe_send_telegram_bulk(messages):
+    # This is not controlled by SEND_TEST_TELEGRAM, it's for core alerts
     if not BOT_TOKEN or not CHAT_ID:
         log("⚠️ Telegram not configured")
         return
@@ -119,6 +119,7 @@ def safe_send_telegram_bulk(messages):
 # ============================
 # Logging overrides to queue alerts
 # ============================
+# These functions now use logging and also append to the alert list.
 def warn(msg):
     logging.warning(msg)
     all_alerts.append(f"⚠️ WARNING: {msg}")
@@ -126,7 +127,7 @@ def warn(msg):
 def error(msg):
     logging.error(msg)
     all_alerts.append(f"❌ ERROR: {msg}")
-
+    
 # ============================
 # Fyers setup
 # ============================
@@ -148,7 +149,7 @@ if not configs_str:
     raise ValueError("❌ TRADE_CONFIGS variable not set in GitHub Actions!")
 
 try:
-   configs_df = pd.read_csv(StringIO(configs_str))
+    configs_df = pd.read_csv(StringIO(configs_str))
 except pd.errors.EmptyDataError:
     error("❌ TRADE_CONFIGS provided but CSV is empty!")
     raise ValueError("❌ TRADE_CONFIGS provided but CSV is empty!")
