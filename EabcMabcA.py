@@ -1,4 +1,3 @@
-new code
 # ============================
 # SMA Crossover Alert with Gap Handling and Separate Test Telegram Message
 # ============================
