@@ -41,37 +41,10 @@ if not BOT_TOKEN or not CHAT_ID:
 TELEGRAM_LIMIT = 4000  # Telegram max message length
 
 # ============================
-# Telegram Log Handler (Reverted to real-time, controlled by toggle)
-# ============================
-class TelegramHandler(logging.Handler):
-    """A custom logging handler that sends messages to Telegram in real-time."""
-    def __init__(self, bot_token, chat_id):
-        super().__init__()
-        self.bot_token = bot_token
-        self.chat_id = chat_id
-
-    def emit(self, record):
-        log_entry = self.format(record)
-        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-        payload = {"chat_id": self.chat_id, "text": log_entry}
-        try:
-            requests.post(url, data=payload, timeout=5)
-        except Exception as e:
-            print(f"Failed to send log to Telegram: {e}")
-
-# Separate control for real-time logging
-SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
-if BOT_TOKEN and CHAT_ID and SEND_TEST_TELEGRAM:
-    telegram_handler = TelegramHandler(BOT_TOKEN, CHAT_ID)
-    telegram_handler.setLevel(logging.INFO)
-    logging.getLogger().addHandler(telegram_handler)
-    log("✅ Real-time Telegram logs are enabled.")
-
-# ============================
 # Independent Test Telegram Message
 # ============================
+SEND_TEST_TELEGRAM = os.environ.get("SEND_TEST_TELEGRAM") == '1'
 def send_test_telegram():
-    """Send a standalone test message, independent of other alerts."""
     if SEND_TEST_TELEGRAM and BOT_TOKEN and CHAT_ID:
         msg = "🧪 Test: Telegram alerts are configured and working!"
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -85,20 +58,38 @@ def send_test_telegram():
         except Exception as e:
             log(f"⚠️ Test Telegram exception: {e}")
 
-# Send test message immediately
 send_test_telegram()
 
 # ============================
-# In-memory storage for SMA alerts
+# In-memory storage for logs and SMA alerts
 # ============================
-all_alerts = []  # This list now only collects the final SMA alerts
-alert_cache = set()  # For duplicate prevention per run
+all_logs = []
+all_alerts = []
+alert_cache = set()
 
 # ============================
-# Telegram helpers (for SMA alerts)
+# Telegram helpers
 # ============================
-def safe_send_telegram_bulk(messages):
-    # This is not controlled by SEND_TEST_TELEGRAM, it's for core alerts
+def safe_send_telegram_bulk_logs(messages):
+    # Sends general logs, controlled by the SEND_TEST_TELEGRAM variable
+    if not BOT_TOKEN or not CHAT_ID:
+        log("⚠️ Telegram not configured")
+        return
+    combined = "\n".join(messages)
+    while combined:
+        chunk = combined[:TELEGRAM_LIMIT]
+        combined = combined[TELEGRAM_LIMIT:]
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": CHAT_ID, "text": chunk}
+        try:
+            r = requests.post(url, data=payload, timeout=10)
+            if r.status_code != 200:
+                log(f"⚠️ Telegram log send failed: {r.text}")
+        except Exception as e:
+            log(f"⚠️ Telegram log exception: {e}")
+
+def safe_send_telegram_bulk_alerts(messages):
+    # Sends SMA alerts, which are always on if credentials exist
     if not BOT_TOKEN or not CHAT_ID:
         log("⚠️ Telegram not configured")
         return
@@ -111,22 +102,29 @@ def safe_send_telegram_bulk(messages):
         try:
             r = requests.post(url, data=payload, timeout=10)
             if r.status_code != 200:
-                log(f"⚠️ Telegram send failed: {r.text}")
+                log(f"⚠️ Telegram alert send failed: {r.text}")
         except Exception as e:
-            log(f"⚠️ Telegram exception: {e}")
+            log(f"⚠️ Telegram alert exception: {e}")
 
 # ============================
-# Logging overrides to queue alerts
+# Logging overrides to queue messages
 # ============================
-# These functions now use logging and also append to the alert list.
+def log_and_queue(msg):
+    # Logs to console/file and queues for the log message
+    logging.info(msg)
+    formatted_msg = f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]} [INFO] {msg}"
+    all_logs.append(formatted_msg)
+
 def warn(msg):
+    # Logs to console/file and queues for the log and alert messages
     logging.warning(msg)
     all_alerts.append(f"⚠️ WARNING: {msg}")
 
 def error(msg):
+    # Logs to console/file and queues for the log and alert messages
     logging.error(msg)
     all_alerts.append(f"❌ ERROR: {msg}")
-    
+
 # ============================
 # Fyers setup
 # ============================
@@ -137,7 +135,7 @@ if not access_token:
 
 client_id = access_token.split(":")[0]
 fyers = fyersModel.FyersModel(client_id=client_id, token=access_token, is_async=False)
-log("🔑 Fyers token loaded")
+log_and_queue("🔑 Fyers token loaded")
 
 # ============================
 # Load configs from CSV
@@ -154,8 +152,8 @@ except pd.errors.EmptyDataError:
     raise ValueError("❌ TRADE_CONFIGS provided but CSV is empty!")
 
 configs = list(configs_df.itertuples(index=False, name=None))
-log("✅ Loaded strategy configs:")
-log(str(configs_df))
+log_and_queue("✅ Loaded strategy configs:")
+log_and_queue(str(configs_df))
 
 # ============================
 # Fetch historical candles
@@ -204,8 +202,7 @@ def detect_sma_cross(df, periods, symbol, tf):
 
     for p in periods:
         sma = last[f"SMA_{p}"]
-        key = f"{symbol}_{tf}_SMA{p}"  # Duplicate prevention
-
+        key = f"{symbol}_{tf}_SMA{p}"
         if key in alert_cache:
             continue
 
@@ -219,7 +216,6 @@ def detect_sma_cross(df, periods, symbol, tf):
 
             ts_24 = last['Timestamp'].strftime("%Y-%m-%d %H:%M:%S")
             ts_12 = last['Timestamp'].strftime("%Y-%m-%d %I:%M:%S %p")
-
             msg = (
                 f"{'📈' if trend=='Bullish' else '📉'} {symbol} | {tf}m\n"
                 f"🕒 {ts_12} / {ts_24}\n"
@@ -234,24 +230,27 @@ def detect_sma_cross(df, periods, symbol, tf):
 # ============================
 try:
     for symbol, tf, sma_p, count in configs:
-        log(f"\n📊 {symbol} | {tf} min timeframe | SMA{sma_p} | count={count}")
+        log_and_queue(f"\n📊 {symbol} | {tf} min timeframe | SMA{sma_p} | count={count}")
         df = fetch_candles(symbol, str(tf), int(count))
         if df is not None:
             periods = [int(sma_p)] if isinstance(sma_p, int) else list(map(int, str(sma_p).split(";")))
             df = add_sma(df, periods)
-            log(str(df.tail(3)[["Timestamp","Close"] + [f"SMA_{p}" for p in periods]]))
+            log_and_queue(str(df.tail(3)[["Timestamp","Close"] + [f"SMA_{p}" for p in periods]]))
             detect_sma_cross(df, periods, symbol, str(tf))
 
-    # Send all SMA alerts in bulk if any
+    # Send logs and alerts in their respective bulk messages
+    if SEND_TEST_TELEGRAM and all_logs:
+        safe_send_telegram_bulk_logs(all_logs)
+    
     if all_alerts:
-        safe_send_telegram_bulk(all_alerts)
+        safe_send_telegram_bulk_alerts(all_alerts)
     else:
-        log("✅ No alerts detected this run.")
+        log_and_queue("✅ No alerts detected this run.")
 
-    log("✅ Run completed successfully")
+    log_and_queue("✅ Run completed successfully")
 
 except Exception as e:
     error(f"💥 Unhandled exception: {e}")
     if all_alerts:
-        safe_send_telegram_bulk(all_alerts)
+        safe_send_telegram_bulk_alerts(all_alerts)
     raise
