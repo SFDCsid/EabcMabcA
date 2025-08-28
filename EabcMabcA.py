@@ -19,7 +19,7 @@ _timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 LOG_FILE = f"logs/run-{_timestamp}.txt"
 
 logging.basicConfig(
-  level=logging.INFO,
+level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.FileHandler(LOG_FILE, encoding="utf-8"),
