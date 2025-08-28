@@ -49,6 +49,7 @@ jobs:
           TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
           TRADE_CONFIGS: ${{ vars.TRADE_CONFIGS }}   # <-- NEW
+          SEND_TEST_TELEGRAM: ${{ vars.SEND_TEST_TELEGRAM }}   # <-- NEW
         run: |
           mkdir -p logs
           CURRENT_LOG="logs/current_run.log"
