@@ -1,4 +1,3 @@
-latest
 # SMA Crossover Alert with Gap Handling and Combined Telegram Alerts
 import os
 import time
